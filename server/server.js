@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 
+// Route imports
+const authRoutes = require('./routes/authRoutes');
+
 // Initialize Express app
 const app = express();
 
@@ -32,11 +35,14 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// API Routes
+app.use('/api/auth', authRoutes);
+
 // Port configuration
 const PORT = process.env.PORT || 5000;
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`API URL: http://localhost:${PORT}`);
