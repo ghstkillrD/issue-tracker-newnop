@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 
 /**
  * Connect to MongoDB database
- * Uses connection string from environment variables
  */
 const connectDB = async () => {
   try {
