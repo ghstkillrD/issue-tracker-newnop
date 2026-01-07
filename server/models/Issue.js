@@ -44,7 +44,9 @@ const issueSchema = new mongoose.Schema({
 
 // Update the updatedAt timestamp before saving
 issueSchema.pre('save', function() {
-  this.updatedAt = Date.now();
+  if (!this.isNew) {
+    this.updatedAt = Date.now();
+  }
 });
 
 module.exports = mongoose.model('Issue', issueSchema);
