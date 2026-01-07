@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
+const issueRoutes = require('./routes/issueRoutes');
 
 // Initialize Express app
 const app = express();
@@ -37,6 +38,7 @@ app.get('/api/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/issues', issueRoutes);
 
 // Port configuration
 const PORT = process.env.PORT || 5000;
