@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import issueService, { type Issue, type IssueStats } from '../../services/issueService';
+import issueService, { type Issue, type IssueStats, type CreateIssueData, type UpdateIssueData } from '../../services/issueService';
 import authService from '../../services/authService';
 import IssueList from '../../components/issues/IssueList.tsx';
+import Modal from '../../components/common/Modal';
+import IssueForm from '../../components/issues/IssueForm';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     // Check if user is authenticated
@@ -56,9 +59,19 @@ const Dashboard = () => {
     navigate('/login');
   };
 
+  const handleCreateIssue = async (data: CreateIssueData | UpdateIssueData) => {
+    try {
+      await issueService.createIssue(data as CreateIssueData);
+      setIsModalOpen(false);
+      fetchData(); // Refresh the issue list
+    } catch (error) {
+      console.error('Error creating issue:', error);
+      throw error;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
+    <div className="min-h-screen bg-slate-50">{/* Header */}
       <div className="bg-white shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -114,7 +127,7 @@ const Dashboard = () => {
                 className="flex-1 px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
-                onClick={() => navigate('/issue/new')}
+                onClick={() => setIsModalOpen(true)}
                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium whitespace-nowrap"
               >
                 + New Issue
@@ -174,6 +187,18 @@ const Dashboard = () => {
           <IssueList issues={issues} loading={loading} />
         </div>
       </div>
+
+      {/* Create Issue Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Create New Issue"
+      >
+        <IssueForm
+          onSubmit={handleCreateIssue}
+          onCancel={() => setIsModalOpen(false)}
+        />
+      </Modal>
     </div>
   );
 };
