@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Provider } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
+import { store } from './store';
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -7,8 +9,9 @@ import IssueDetails from './pages/IssueDetails/IssueDetails';
 
 function App() {
   return (
-    <Router>
-      <Toaster
+    <Provider store={store}>
+      <Router>
+        <Toaster
         position="top-right"
         toastOptions={{
           duration: 4000,
@@ -53,7 +56,8 @@ function App() {
         {/* Catch all - redirect to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-    </Router>
+      </Router>
+    </Provider>
   );
 }
 

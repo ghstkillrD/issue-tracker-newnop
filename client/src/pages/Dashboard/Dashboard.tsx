@@ -1,76 +1,69 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import issueService, { type Issue, type IssueStats, type CreateIssueData, type UpdateIssueData } from '../../services/issueService';
-import authService from '../../services/authService';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchIssues, fetchStats, createIssue as createIssueAction, setFilters } from '../../store/slices/issuesSlice';
+import { logout } from '../../store/slices/authSlice';
+import type { CreateIssueData, UpdateIssueData } from '../../services/issueService';
 import IssueList from '../../components/issues/IssueList.tsx';
 import Modal from '../../components/common/Modal';
 import IssueForm from '../../components/issues/IssueForm';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [stats, setStats] = useState<IssueStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { issues, stats, loading } = useAppSelector((state) => state.issues);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
-    if (!authService.isAuthenticated()) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
-    fetchData();
-  }, [searchTerm, statusFilter, priorityFilter]);
+    
+    // Fetch stats on mount
+    dispatch(fetchStats());
+  }, [isAuthenticated, navigate, dispatch]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch issues with filters
-      const params: any = {};
-      if (searchTerm) params.search = searchTerm;
-      if (statusFilter) params.status = statusFilter;
-      if (priorityFilter) params.priority = priorityFilter;
+  useEffect(() => {
+    // Fetch issues when filters change
+    const params: any = {};
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter) params.status = statusFilter;
+    if (priorityFilter) params.priority = priorityFilter;
 
-      const [issuesResponse, statsData] = await Promise.all([
-        issueService.getIssues(params),
-        issueService.getStats(),
-      ]);
-
-      setIssues(issuesResponse.data);
-      setStats(statsData);
-    } catch (error: any) {
-      console.error('Error fetching dashboard data:', error);
-      if (error.response?.status === 401) {
-        authService.logout();
-        navigate('/login');
-      } else {
-        toast.error('Failed to load dashboard data. Please refresh the page.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    dispatch(setFilters({ search: searchTerm, status: statusFilter, priority: priorityFilter }));
+    dispatch(fetchIssues(params)).catch(() => {
+      toast.error('Failed to load dashboard data. Please refresh the page.');
+    });
+  }, [searchTerm, statusFilter, priorityFilter, dispatch]);
 
   const handleLogout = () => {
-    authService.logout();
+    dispatch(logout());
     navigate('/login');
   };
 
   const handleCreateIssue = async (data: CreateIssueData | UpdateIssueData) => {
     try {
-      await issueService.createIssue(data as CreateIssueData);
+      await dispatch(createIssueAction(data as CreateIssueData)).unwrap();
       setIsModalOpen(false);
       toast.success('Issue created successfully!');
-      fetchData();
+      
+      // Refresh stats and issues
+      dispatch(fetchStats());
+      dispatch(fetchIssues({
+        search: searchTerm || undefined,
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
+      }));
     } catch (error: any) {
-      console.error('Error creating issue:', error);
-      toast.error(error.response?.data?.message || 'Failed to create issue. Please try again.');
-      throw error;
+      toast.error(error || 'Failed to create issue. Please try again.');
     }
   };
 

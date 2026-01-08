@@ -1,64 +1,51 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import toast from 'react-hot-toast';
-import issueService, { type Issue, type UpdateIssueData } from '../../services/issueService';
-import authService from '../../services/authService';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchIssueById, updateIssue as updateIssueAction, deleteIssue as deleteIssueAction, clearCurrentIssue } from '../../store/slices/issuesSlice';
+import type { UpdateIssueData } from '../../services/issueService';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import IssueForm from '../../components/issues/IssueForm';
+import { useState } from 'react';
 
 const IssueDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [issue, setIssue] = useState<Issue | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { currentIssue: issue, loading } = useAppSelector((state) => state.issues);
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
     if (id) {
-      fetchIssue();
-    }
-  }, [id]);
-
-  const fetchIssue = async () => {
-    if (!id) return;
-
-    try {
-      setLoading(true);
-      const data = await issueService.getIssueById(id);
-      setIssue(data);
-    } catch (error: any) {
-      console.error('Error fetching issue:', error);
-      if (error.response?.status === 401) {
-        authService.logout();
-        navigate('/login');
-      } else if (error.response?.status === 404) {
-        toast.error('Issue not found');
+      dispatch(fetchIssueById(id)).unwrap().catch((error) => {
+        toast.error(error || 'Failed to load issue details');
         navigate('/dashboard');
-      } else {
-        toast.error('Failed to load issue details');
-      }
-    } finally {
-      setLoading(false);
+      });
     }
-  };
+
+    return () => {
+      dispatch(clearCurrentIssue());
+    };
+  }, [id, isAuthenticated, navigate, dispatch]);
 
   const handleUpdateIssue = async (data: UpdateIssueData) => {
     if (!id) return;
 
     try {
-      await issueService.updateIssue(id, data);
+      await dispatch(updateIssueAction({ id, data })).unwrap();
       setIsEditModalOpen(false);
       toast.success('Issue updated successfully!');
-      fetchIssue(); // Refresh issue data
     } catch (error: any) {
-      console.error('Error updating issue:', error);
-      toast.error(error.response?.data?.message || 'Failed to update issue');
+      toast.error(error || 'Failed to update issue');
       throw error;
     }
   };
@@ -72,12 +59,10 @@ const IssueDetails = () => {
 
     if (confirmed) {
       try {
-        await issueService.updateIssue(id, { status: 'Resolved' });
+        await dispatch(updateIssueAction({ id, data: { status: 'Resolved' } })).unwrap();
         toast.success('Issue marked as resolved!');
-        fetchIssue(); // Refresh issue data
       } catch (error: any) {
-        console.error('Error updating issue status:', error);
-        toast.error(error.response?.data?.message || 'Failed to update issue status');
+        toast.error(error || 'Failed to update issue status');
       }
     }
   };
@@ -91,12 +76,11 @@ const IssueDetails = () => {
 
     if (confirmed) {
       try {
-        await issueService.deleteIssue(id);
+        await dispatch(deleteIssueAction(id)).unwrap();
         toast.success('Issue deleted successfully');
         navigate('/dashboard');
       } catch (error: any) {
-        console.error('Error deleting issue:', error);
-        toast.error(error.response?.data?.message || 'Failed to delete issue');
+        toast.error(error || 'Failed to delete issue');
       }
     }
   };

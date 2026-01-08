@@ -1,38 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import authService from '../../services/authService';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { login as loginAction, clearError } from '../../store/slices/authSlice';
 
 const Login = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { loading, error: authError, isAuthenticated } = useAppSelector((state) => state.auth);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
 
     try {
-      const response = await authService.login({ email, password });
-      
-      // Store token and user data in localStorage
-      authService.storeAuthData(response.token, response.user);
-      
-      // Show success toast
+      await dispatch(loginAction({ email, password })).unwrap();
       toast.success('Welcome back! Login successful.');
-      
-      // Redirect to dashboard
       navigate('/dashboard');
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';
-      setError(errorMessage);
-      toast.error(errorMessage);
-      console.error('Login error:', err);
-    } finally {
-      setLoading(false);
+      toast.error(err || 'Login failed. Please check your credentials.');
     }
   };
 
@@ -61,7 +61,7 @@ const Login = () => {
         </div>
         
         {/* Error Message */}
-        {error && (
+        {authError && (
           <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 rounded-xl animate-shake">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
@@ -69,7 +69,7 @@ const Login = () => {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-sm text-red-700 font-medium">{error}</span>
+              <span className="text-sm text-red-700 font-medium">{authError}</span>
             </div>
           </div>
         )}
