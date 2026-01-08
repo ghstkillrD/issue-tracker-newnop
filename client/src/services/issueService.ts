@@ -4,7 +4,7 @@ export interface Issue {
   _id: string;
   title: string;
   description: string;
-  status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  status: 'Open' | 'In Progress' | 'Resolved';
   priority: 'Low' | 'Medium' | 'High';
   severity: 'Critical' | 'Major' | 'Minor';
   createdBy: {
@@ -22,7 +22,6 @@ export interface IssueStats {
     Open: number;
     'In Progress': number;
     Resolved: number;
-    Closed: number;
   };
   byPriority: {
     Low: number;
@@ -39,12 +38,9 @@ export interface IssueStats {
 export interface IssuesResponse {
   success: boolean;
   count: number;
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  total: number;
+  totalPages: number;
+  currentPage: number;
   data: Issue[];
 }
 
@@ -58,7 +54,7 @@ export interface CreateIssueData {
 export interface UpdateIssueData {
   title?: string;
   description?: string;
-  status?: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+  status?: 'Open' | 'In Progress' | 'Resolved';
   priority?: 'Low' | 'Medium' | 'High';
   severity?: 'Critical' | 'Major' | 'Minor';
 }

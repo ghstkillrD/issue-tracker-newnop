@@ -292,7 +292,7 @@ const getIssueStats = async (req, res) => {
     });
 
     // Ensure all statuses are represented
-    ['Open', 'In Progress', 'Resolved', 'Closed'].forEach(status => {
+    ['Open', 'In Progress', 'Resolved'].forEach(status => {
       if (!formattedStats.byStatus[status]) {
         formattedStats.byStatus[status] = 0;
       }

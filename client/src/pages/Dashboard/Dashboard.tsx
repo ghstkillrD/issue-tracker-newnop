@@ -1,72 +1,138 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import issueService, { type Issue, type IssueStats, type CreateIssueData, type UpdateIssueData } from '../../services/issueService';
-import authService from '../../services/authService';
+import toast from 'react-hot-toast';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchIssues, fetchStats, createIssue as createIssueAction, setFilters, setPage, setLimit } from '../../store/slices/issuesSlice';
+import { logout } from '../../store/slices/authSlice';
+import type { CreateIssueData, UpdateIssueData } from '../../services/issueService';
 import IssueList from '../../components/issues/IssueList.tsx';
 import Modal from '../../components/common/Modal';
 import IssueForm from '../../components/issues/IssueForm';
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [stats, setStats] = useState<IssueStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { issues, stats, loading, pagination } = useAppSelector((state) => state.issues);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showFloatingButton, setShowFloatingButton] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
-    if (!authService.isAuthenticated()) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
-    fetchData();
-  }, [searchTerm, statusFilter, priorityFilter]);
+    
+    // Fetch stats on mount
+    dispatch(fetchStats());
+  }, [isAuthenticated, navigate, dispatch]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch issues with filters
-      const params: any = {};
-      if (searchTerm) params.search = searchTerm;
-      if (statusFilter) params.status = statusFilter;
-      if (priorityFilter) params.priority = priorityFilter;
+  useEffect(() => {
+    // Handle scroll to show/hide floating button
+    const handleScroll = () => {
+      // Show floating button when scrolled past 300px (roughly past the search bar)
+      setShowFloatingButton(window.scrollY > 300);
+    };
 
-      const [issuesResponse, statsData] = await Promise.all([
-        issueService.getIssues(params),
-        issueService.getStats(),
-      ]);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-      setIssues(issuesResponse.data);
-      setStats(statsData);
-    } catch (error: any) {
-      console.error('Error fetching dashboard data:', error);
-      if (error.response?.status === 401) {
-        authService.logout();
-        navigate('/login');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    // Fetch issues when filters change
+    const params: any = {};
+    if (searchTerm) params.search = searchTerm;
+    if (statusFilter) params.status = statusFilter;
+    if (priorityFilter) params.priority = priorityFilter;
+    params.page = pagination.currentPage;
+    params.limit = pagination.limit;
+
+    dispatch(setFilters({ search: searchTerm, status: statusFilter, priority: priorityFilter }));
+    dispatch(fetchIssues(params)).catch(() => {
+      toast.error('Failed to load dashboard data. Please refresh the page.');
+    });
+  }, [searchTerm, statusFilter, priorityFilter, pagination.currentPage, pagination.limit, dispatch]);
 
   const handleLogout = () => {
-    authService.logout();
+    dispatch(logout());
     navigate('/login');
   };
 
   const handleCreateIssue = async (data: CreateIssueData | UpdateIssueData) => {
     try {
-      await issueService.createIssue(data as CreateIssueData);
+      await dispatch(createIssueAction(data as CreateIssueData)).unwrap();
       setIsModalOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error creating issue:', error);
-      throw error;
+      toast.success('Issue created successfully!');
+      
+      // Refresh stats and issues
+      dispatch(fetchStats());
+      dispatch(fetchIssues({
+        search: searchTerm || undefined,
+        status: statusFilter || undefined,
+        priority: priorityFilter || undefined,
+        page: pagination.currentPage,
+        limit: pagination.limit,
+      }));
+    } catch (error: any) {
+      toast.error(error || 'Failed to create issue. Please try again.');
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    dispatch(setPage(newPage));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    dispatch(setLimit(newLimit));
+  };
+
+  const handleExportCSV = () => {
+    if (issues.length === 0) {
+      toast.error('No issues to export');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = ['Title', 'Status', 'Priority', 'Severity', 'Created By', 'Created At', 'Last Updated'];
+    
+    // Convert issues to CSV rows
+    const rows = issues.map(issue => [
+      `"${issue.title.replace(/"/g, '""')}"`, // Escape quotes in title
+      issue.status,
+      issue.priority,
+      issue.severity,
+      issue.createdBy?.name || issue.createdBy?.email || 'Unknown',
+      new Date(issue.createdAt).toLocaleString(),
+      new Date(issue.updatedAt).toLocaleString()
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `issues_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`Exported ${issues.length} issues to CSV`);
   };
 
   return (
@@ -78,37 +144,7 @@ const Dashboard = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-cyan-300 to-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-500"></div>
       </div>
 
-      {/* Header */}
-      <div className="relative bg-white/80 backdrop-blur-xl shadow-xl border-b border-white/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-2xl transform hover:scale-110 transition-transform">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-3xl font-extrabold bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Issue Tracker
-                </h1>
-                <p className="text-sm text-slate-600 mt-0.5">Manage your projects efficiently</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold"
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Logout
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <Navbar onLogout={handleLogout} />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
@@ -198,19 +234,18 @@ const Dashboard = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-5 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 font-medium cursor-pointer hover:border-purple-300"
+                className="appearance-none px-5 py-4 pr-10 bg-white border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 font-medium cursor-pointer hover:border-purple-300 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNSA3LjVMMTAgMTIuNUwxNSA3LjUiIHN0cm9rZT0iIzY0NzQ4YiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=')] bg-[length:20px_20px] bg-[right_1rem_center] bg-no-repeat"
               >
                 <option value="">All Status</option>
                 <option value="Open">Open</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Resolved">Resolved</option>
-                <option value="Closed">Closed</option>
               </select>
 
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="px-5 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 font-medium cursor-pointer hover:border-purple-300"
+                className="appearance-none px-5 py-4 pr-10 bg-white border-2 border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 font-medium cursor-pointer hover:border-purple-300 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNSA3LjVMMTAgMTIuNUwxNSA3LjUiIHN0cm9rZT0iIzY0NzQ4YiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=')] bg-[length:20px_20px] bg-[right_1rem_center] bg-no-repeat"
               >
                 <option value="">All Priority</option>
                 <option value="Low">Low</option>
@@ -239,6 +274,82 @@ const Dashboard = () => {
             All Issues
           </h2>
           <IssueList issues={issues} loading={loading} />
+
+          {/* Pagination Controls */}
+          {!loading && issues.length > 0 && (
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200">
+              {/* Items per page selector */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-600 font-medium">Items per page:</span>
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => handleLimitChange(Number(e.target.value))}
+                  className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 font-medium cursor-pointer hover:border-purple-300"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-slate-500">
+                  Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total}
+                </span>
+              </div>
+
+              {/* Page navigation */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white transition-all font-medium text-slate-700"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                          pagination.currentPage === pageNum
+                            ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 text-white shadow-lg'
+                            : 'bg-white border-2 border-slate-200 text-slate-700 hover:border-purple-300 hover:bg-purple-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white transition-all font-medium text-slate-700"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -246,6 +357,43 @@ const Dashboard = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Issue">
         <IssueForm onSubmit={handleCreateIssue} onCancel={() => setIsModalOpen(false)} />
       </Modal>
+
+      {/* Floating Export CSV Button */}
+      <button
+        onClick={handleExportCSV}
+        disabled={loading || issues.length === 0}
+        className="group fixed bottom-8 right-8 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 z-40 flex items-center overflow-hidden opacity-90 hover:opacity-100"
+        title="Export issues to CSV"
+      >
+        <div className="p-4 flex items-center justify-center">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap pr-0 group-hover:pr-5 font-bold">
+          Export CSV
+        </span>
+      </button>
+
+      {/* Floating New Issue Button - appears on scroll */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className={`group fixed bottom-24 right-8 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 active:scale-95 transition-all z-40 flex items-center overflow-hidden hover:opacity-100 ${
+          showFloatingButton ? 'translate-y-0 opacity-90' : 'translate-y-32 opacity-0 pointer-events-none'
+        }`}
+        title="Create new issue"
+      >
+        <div className="p-4 flex items-center justify-center">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap pr-0 group-hover:pr-5 font-bold">
+          New Issue
+        </span>
+      </button>
+
+      <Footer />
     </div>
   );
 };

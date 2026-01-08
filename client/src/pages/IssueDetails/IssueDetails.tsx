@@ -1,58 +1,53 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import issueService, { type Issue, type UpdateIssueData } from '../../services/issueService';
-import authService from '../../services/authService';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchIssueById, updateIssue as updateIssueAction, deleteIssue as deleteIssueAction, clearCurrentIssue } from '../../store/slices/issuesSlice';
+import { logout } from '../../store/slices/authSlice';
+import type { UpdateIssueData } from '../../services/issueService';
 import Badge from '../../components/common/Badge';
 import Modal from '../../components/common/Modal';
 import IssueForm from '../../components/issues/IssueForm';
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
 
 const IssueDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [issue, setIssue] = useState<Issue | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { currentIssue: issue, loading } = useAppSelector((state) => state.issues);
+  
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
     if (id) {
-      fetchIssue();
-    }
-  }, [id]);
-
-  const fetchIssue = async () => {
-    if (!id) return;
-
-    try {
-      setLoading(true);
-      const data = await issueService.getIssueById(id);
-      setIssue(data);
-    } catch (error: any) {
-      console.error('Error fetching issue:', error);
-      if (error.response?.status === 401) {
-        authService.logout();
-        navigate('/login');
-      } else if (error.response?.status === 404) {
+      dispatch(fetchIssueById(id)).unwrap().catch((error) => {
+        toast.error(error || 'Failed to load issue details');
         navigate('/dashboard');
-      }
-    } finally {
-      setLoading(false);
+      });
     }
-  };
+
+    return () => {
+      dispatch(clearCurrentIssue());
+    };
+  }, [id, isAuthenticated, navigate, dispatch]);
 
   const handleUpdateIssue = async (data: UpdateIssueData) => {
     if (!id) return;
 
     try {
-      await issueService.updateIssue(id, data);
+      await dispatch(updateIssueAction({ id, data })).unwrap();
       setIsEditModalOpen(false);
-      fetchIssue(); // Refresh issue data
-    } catch (error) {
-      console.error('Error updating issue:', error);
+      toast.success('Issue updated successfully!');
+    } catch (error: any) {
+      toast.error(error || 'Failed to update issue');
       throw error;
     }
   };
@@ -66,12 +61,22 @@ const IssueDetails = () => {
 
     if (confirmed) {
       try {
-        await issueService.updateIssue(id, { status: 'Resolved' });
-        fetchIssue(); // Refresh issue data
+        await dispatch(updateIssueAction({ id, data: { status: 'Resolved' } })).unwrap();
+        toast.success('Issue marked as resolved!');
       } catch (error: any) {
-        console.error('Error updating issue status:', error);
-        alert(error.response?.data?.message || 'Failed to update issue status');
+        toast.error(error || 'Failed to update issue status');
       }
+    }
+  };
+
+  const handleMarkAsInProgress = async () => {
+    if (!id || !issue) return;
+
+    try {
+      await dispatch(updateIssueAction({ id, data: { status: 'In Progress' } })).unwrap();
+      toast.success('Issue status updated to In Progress!');
+    } catch (error: any) {
+      toast.error(error || 'Failed to update issue status');
     }
   };
 
@@ -84,13 +89,18 @@ const IssueDetails = () => {
 
     if (confirmed) {
       try {
-        await issueService.deleteIssue(id);
+        await dispatch(deleteIssueAction(id)).unwrap();
+        toast.success('Issue deleted successfully');
         navigate('/dashboard');
       } catch (error: any) {
-        console.error('Error deleting issue:', error);
-        alert(error.response?.data?.message || 'Failed to delete issue');
+        toast.error(error || 'Failed to delete issue');
       }
     }
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
   };
 
   const formatDate = (dateString: string) => {
@@ -106,82 +116,130 @@ const IssueDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-100 to-cyan-100 flex items-center justify-center">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
+          <div className="relative animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-violet-600 border-r-purple-600 border-b-pink-600"></div>
+        </div>
       </div>
     );
   }
 
   if (!issue) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-600">Issue not found</p>
+      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-100 to-cyan-100 flex items-center justify-center">
+        <p className="text-slate-700 text-lg">Issue not found</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-blue-600 hover:text-blue-700 font-medium mb-2 flex items-center gap-1"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Dashboard
-          </button>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-100 to-cyan-100">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-violet-300 to-purple-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-pink-300 to-rose-400 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-cyan-300 to-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-500"></div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 sm:p-6">
-          <div className="mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                {issue.title}
-              </h1>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="px-4 py-2 text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors font-medium"
-                >
-                  Edit
-                </button>
-                {issue.status !== 'Resolved' && issue.status !== 'Closed' && (
-                  <button
-                    onClick={handleMarkAsResolved}
-                    className="px-4 py-2 text-green-600 border border-green-600 rounded-md hover:bg-green-50 transition-colors font-medium"
-                  >
-                    Mark as Resolved
-                  </button>
-                )}
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 text-red-600 border border-red-600 rounded-md hover:bg-red-50 transition-colors font-medium"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+      <Navbar onLogout={handleLogout} />
 
-            <div className="flex flex-wrap gap-2 mb-4">
-              <Badge type="status" value={issue.status} />
-              <Badge type="priority" value={issue.priority} />
-              <Badge type="severity" value={issue.severity} />
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="mb-6 text-violet-700 hover:text-violet-900 font-semibold flex items-center gap-2 group transition-colors"
+        >
+          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Dashboard
+        </button>
+
+        {/* Action Buttons - Separated from card */}
+        <div className="mb-6 flex flex-wrap items-center justify-center sm:justify-start gap-4">
+          {/* Icon Buttons Group - Edit and Delete */}
+          <div className="flex gap-2">
+            {/* Edit Button */}
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="p-3 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all"
+              title="Edit Issue"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+
+            {/* Delete Button */}
+            <button
+              onClick={handleDelete}
+              className="p-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-2xl hover:scale-110 active:scale-95 transition-all"
+              title="Delete Issue"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Status Change Button - Dynamic based on current status */}
+          {issue.status === 'Open' && (
+            <button
+              onClick={handleMarkAsInProgress}
+              className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Mark as In Progress
+            </button>
+          )}
+
+          {issue.status === 'In Progress' && (
+            <button
+              onClick={handleMarkAsResolved}
+              className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mark as Resolved
+            </button>
+          )}
+        </div>
+
+        {/* Issue Details Card */}
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 p-8">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">
+              {issue.title}
+            </h2>
+            
+            {/* Badges with Labels */}
+            <div className="flex flex-wrap gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-700">Status:</span>
+                <Badge type="status" value={issue.status} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-700">Priority:</span>
+                <Badge type="priority" value={issue.priority} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-700">Severity:</span>
+                <Badge type="severity" value={issue.severity} />
+              </div>
             </div>
           </div>
 
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-3">Description</h2>
-            <p className="text-slate-700 whitespace-pre-wrap">{issue.description}</p>
+            <h3 className="text-lg font-semibold text-slate-900 mb-3">Description</h3>
+            <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">{issue.description}</p>
           </div>
 
           <div className="border-t border-slate-200 pt-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Issue Details</h2>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Issue Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium text-slate-700">Created By:</span>
@@ -205,6 +263,8 @@ const IssueDetails = () => {
           </div>
         </div>
       </div>
+
+      <Footer />
 
       {/* Edit Issue Modal */}
       <Modal

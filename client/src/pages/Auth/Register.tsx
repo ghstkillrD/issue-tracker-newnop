@@ -1,41 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import authService from '../../services/authService';
+import toast from 'react-hot-toast';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { register as registerAction, clearError } from '../../store/slices/authSlice';
 
 const Register = () => {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { loading, error: authError, isAuthenticated } = useAppSelector((state) => state.auth);
+  
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearError());
+    };
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setValidationError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      const errorMsg = 'Passwords do not match';
+      setValidationError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      const errorMsg = 'Password must be at least 6 characters long';
+      setValidationError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
-    setLoading(true);
-
     try {
-      const response = await authService.register({ name, email, password });
-      authService.storeAuthData(response.token, response.user);
+      await dispatch(registerAction({ name, email, password })).unwrap();
+      toast.success('Account created successfully! Welcome aboard.');
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
-      console.error('Registration error:', err);
-    } finally {
-      setLoading(false);
+      toast.error(err || 'Registration failed. Please try again.');
     }
   };
 
@@ -64,7 +79,7 @@ const Register = () => {
         </div>
         
         {/* Error Message */}
-        {error && (
+        {(authError || validationError) && (
           <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 rounded-xl">
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
@@ -72,7 +87,7 @@ const Register = () => {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-sm text-red-700 font-medium">{error}</span>
+              <span className="text-sm text-red-700 font-medium">{authError || validationError}</span>
             </div>
           </div>
         )}
