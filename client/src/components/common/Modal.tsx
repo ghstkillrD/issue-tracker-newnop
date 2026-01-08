@@ -33,16 +33,16 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        {/* Backdrop */}
+        {/* Backdrop with Blur Effect */}
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+          className="fixed inset-0 bg-slate-900/20 backdrop-blur-md transition-all"
           onClick={onClose}
         ></div>
 
         {/* Modal */}
         <div
           ref={modalRef}
-          className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/40"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-200">
