@@ -81,6 +81,48 @@ const Dashboard = () => {
     dispatch(setLimit(newLimit));
   };
 
+  const handleExportCSV = () => {
+    if (issues.length === 0) {
+      toast.error('No issues to export');
+      return;
+    }
+
+    // Define CSV headers
+    const headers = ['Title', 'Status', 'Priority', 'Severity', 'Created By', 'Created At', 'Last Updated'];
+    
+    // Convert issues to CSV rows
+    const rows = issues.map(issue => [
+      `"${issue.title.replace(/"/g, '""')}"`, // Escape quotes in title
+      issue.status,
+      issue.priority,
+      issue.severity,
+      issue.createdBy?.name || issue.createdBy?.email || 'Unknown',
+      new Date(issue.createdAt).toLocaleString(),
+      new Date(issue.updatedAt).toLocaleString()
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `issues_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success(`Exported ${issues.length} issues to CSV`);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-100 to-cyan-100">
       {/* Animated Background Elements */}
@@ -198,6 +240,20 @@ const Dashboard = () => {
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
               </select>
+
+              <button
+                onClick={handleExportCSV}
+                disabled={loading || issues.length === 0}
+                className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                title="Export issues to CSV"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export CSV
+                </span>
+              </button>
 
               <button
                 onClick={() => setIsModalOpen(true)}
