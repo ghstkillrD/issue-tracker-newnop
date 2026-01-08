@@ -14,7 +14,7 @@ const IssueForm = ({ issue, onSubmit, onCancel, isEdit = false }: IssueFormProps
     description: '',
     priority: 'Medium' as 'Low' | 'Medium' | 'High',
     severity: 'Minor' as 'Critical' | 'Major' | 'Minor',
-    status: 'Open' as 'Open' | 'In Progress' | 'Resolved' | 'Closed',
+    status: 'Open' as 'Open' | 'In Progress' | 'Resolved',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -164,7 +164,6 @@ const IssueForm = ({ issue, onSubmit, onCancel, isEdit = false }: IssueFormProps
             <option value="Open">Open</option>
             <option value="In Progress">In Progress</option>
             <option value="Resolved">Resolved</option>
-            <option value="Closed">Closed</option>
           </select>
         </div>
       )}
