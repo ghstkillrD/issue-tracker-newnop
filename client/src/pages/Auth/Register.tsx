@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import authService from '../../services/authService';
 
 const Register = () => {
@@ -16,12 +17,16 @@ const Register = () => {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      const errorMsg = 'Passwords do not match';
+      setError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      const errorMsg = 'Password must be at least 6 characters long';
+      setError(errorMsg);
+      toast.error(errorMsg);
       return;
     }
 
@@ -30,9 +35,15 @@ const Register = () => {
     try {
       const response = await authService.register({ name, email, password });
       authService.storeAuthData(response.token, response.user);
+      
+      // Show success toast
+      toast.success('Account created successfully! Welcome aboard.');
+      
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Registration error:', err);
     } finally {
       setLoading(false);

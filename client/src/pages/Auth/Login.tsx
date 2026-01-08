@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import authService from '../../services/authService';
 
 const Login = () => {
@@ -20,10 +21,15 @@ const Login = () => {
       // Store token and user data in localStorage
       authService.storeAuthData(response.token, response.user);
       
+      // Show success toast
+      toast.success('Welcome back! Login successful.');
+      
       // Redirect to dashboard
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      setError(errorMessage);
+      toast.error(errorMessage);
       console.error('Login error:', err);
     } finally {
       setLoading(false);

@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import issueService, { type Issue, type UpdateIssueData } from '../../services/issueService';
 import authService from '../../services/authService';
 import Badge from '../../components/common/Badge';
@@ -37,7 +38,10 @@ const IssueDetails = () => {
         authService.logout();
         navigate('/login');
       } else if (error.response?.status === 404) {
+        toast.error('Issue not found');
         navigate('/dashboard');
+      } else {
+        toast.error('Failed to load issue details');
       }
     } finally {
       setLoading(false);
@@ -50,9 +54,11 @@ const IssueDetails = () => {
     try {
       await issueService.updateIssue(id, data);
       setIsEditModalOpen(false);
+      toast.success('Issue updated successfully!');
       fetchIssue(); // Refresh issue data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating issue:', error);
+      toast.error(error.response?.data?.message || 'Failed to update issue');
       throw error;
     }
   };
@@ -67,10 +73,11 @@ const IssueDetails = () => {
     if (confirmed) {
       try {
         await issueService.updateIssue(id, { status: 'Resolved' });
+        toast.success('Issue marked as resolved!');
         fetchIssue(); // Refresh issue data
       } catch (error: any) {
         console.error('Error updating issue status:', error);
-        alert(error.response?.data?.message || 'Failed to update issue status');
+        toast.error(error.response?.data?.message || 'Failed to update issue status');
       }
     }
   };
@@ -85,10 +92,11 @@ const IssueDetails = () => {
     if (confirmed) {
       try {
         await issueService.deleteIssue(id);
+        toast.success('Issue deleted successfully');
         navigate('/dashboard');
       } catch (error: any) {
         console.error('Error deleting issue:', error);
-        alert(error.response?.data?.message || 'Failed to delete issue');
+        toast.error(error.response?.data?.message || 'Failed to delete issue');
       }
     }
   };
@@ -106,8 +114,11 @@ const IssueDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-violet-100 via-pink-100 to-cyan-100 flex items-center justify-center">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 rounded-full blur-xl opacity-30 animate-pulse"></div>
+          <div className="relative animate-spin rounded-full h-20 w-20 border-4 border-transparent border-t-violet-600 border-r-purple-600 border-b-pink-600"></div>
+        </div>
       </div>
     );
   }

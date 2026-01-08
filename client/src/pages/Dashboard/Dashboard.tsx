@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import issueService, { type Issue, type IssueStats, type CreateIssueData, type UpdateIssueData } from '../../services/issueService';
 import authService from '../../services/authService';
 import IssueList from '../../components/issues/IssueList.tsx';
@@ -47,6 +48,8 @@ const Dashboard = () => {
       if (error.response?.status === 401) {
         authService.logout();
         navigate('/login');
+      } else {
+        toast.error('Failed to load dashboard data. Please refresh the page.');
       }
     } finally {
       setLoading(false);
@@ -62,9 +65,11 @@ const Dashboard = () => {
     try {
       await issueService.createIssue(data as CreateIssueData);
       setIsModalOpen(false);
+      toast.success('Issue created successfully!');
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating issue:', error);
+      toast.error(error.response?.data?.message || 'Failed to create issue. Please try again.');
       throw error;
     }
   };
