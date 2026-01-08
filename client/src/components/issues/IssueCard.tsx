@@ -41,16 +41,26 @@ const IssueCard = ({ issue }: IssueCardProps) => {
       </p>
 
       {/* Tags and Date */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <Badge type="priority" value={issue.priority} />
           <Badge type="severity" value={issue.severity} />
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span>{formatDate(issue.createdAt)}</span>
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          {/* User */}
+          <div className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            <span className="font-medium">{issue.createdBy?.name || issue.createdBy?.email}</span>
+          </div>
+          {/* Date */}
+          <div className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>{formatDate(issue.createdAt)}</span>
+          </div>
         </div>
       </div>
     </div>
