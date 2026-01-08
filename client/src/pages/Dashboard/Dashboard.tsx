@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showFloatingButton, setShowFloatingButton] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -32,6 +33,17 @@ const Dashboard = () => {
     // Fetch stats on mount
     dispatch(fetchStats());
   }, [isAuthenticated, navigate, dispatch]);
+
+  useEffect(() => {
+    // Handle scroll to show/hide floating button
+    const handleScroll = () => {
+      // Show floating button when scrolled past 300px (roughly past the search bar)
+      setShowFloatingButton(window.scrollY > 300);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     // Fetch issues when filters change
@@ -360,6 +372,24 @@ const Dashboard = () => {
         </div>
         <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap pr-0 group-hover:pr-5 font-bold">
           Export CSV
+        </span>
+      </button>
+
+      {/* Floating New Issue Button - appears on scroll */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className={`group fixed bottom-24 right-8 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 active:scale-95 transition-all z-40 flex items-center overflow-hidden hover:opacity-100 ${
+          showFloatingButton ? 'translate-y-0 opacity-90' : 'translate-y-32 opacity-0 pointer-events-none'
+        }`}
+        title="Create new issue"
+      >
+        <div className="p-4 flex items-center justify-center">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </div>
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap pr-0 group-hover:pr-5 font-bold">
+          New Issue
         </span>
       </button>
 
