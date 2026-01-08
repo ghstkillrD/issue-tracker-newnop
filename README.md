@@ -6,10 +6,11 @@ A full-stack web application for managing and tracking issues with user authenti
 
 ### Frontend (Client)
 - **Framework**: React 19 (via Vite.js)
-- **Styling**: Tailwind CSS
-- **State Management**: React Context API
+- **Styling**: Tailwind CSS v4
+- **State Management**: Redux Toolkit
 - **HTTP Client**: Axios
 - **Routing**: React Router DOM
+- **Notifications**: React Hot Toast
 - **Language**: TypeScript
 
 ### Backend (Server)
@@ -26,22 +27,28 @@ project_IssueTracker/
 ├── client/                 # Frontend application
 │   ├── public/
 │   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   ├── context/
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   └── utils/
+│   │   ├── assets/         # Static images, icons
+│   │   ├── components/     # Reusable UI components
+│   │   │   ├── common/     # Buttons, Inputs, Modal, Badges
+│   │   │   ├── layout/     # Navbar, Footer
+│   │   │   └── issues/     # IssueCard, IssueList, IssueForm
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── pages/          # Page components
+│   │   │   ├── Auth/       # Login, Register
+│   │   │   ├── Dashboard/  # Main dashboard
+│   │   │   └── IssueDetails/ # Issue detail view
+│   │   ├── services/       # API calls and service layer
+│   │   ├── store/          # Redux store, slices, hooks
+│   │   └── utils/          # Helper functions
 │   ├── package.json
 │   └── vite.config.ts
 ├── server/                 # Backend application
-│   ├── config/
-│   ├── controllers/
-│   ├── middlewares/
-│   ├── models/
-│   ├── routes/
-│   ├── utils/
+│   ├── config/             # Database connection
+│   ├── controllers/        # Request handlers
+│   ├── middlewares/        # Auth and error middlewares
+│   ├── models/             # Mongoose schemas
+│   ├── routes/             # API route definitions
+│   ├── utils/              # Helper functions
 │   ├── package.json
 │   └── server.js
 └── README.md
@@ -123,14 +130,33 @@ project_IssueTracker/
 
 ## Features
 
+### Core Functionality
 - **User Authentication**: Secure login and registration with JWT
-- **Dashboard**: Real-time statistics and issue overview
+- **Dashboard**: Real-time statistics with gradient stat cards
 - **CRUD Operations**: Create, read, update, and delete issues
-- **Status Management**: Track issues through Open, In Progress, Resolved, and Closed states
+- **Status Management**: Track issues through Open → In Progress → Resolved workflow
 - **Priority & Severity Levels**: Categorize issues by priority (Low, Medium, High) and severity (Critical, Major, Minor)
 - **Advanced Filtering**: Search and filter issues by status, priority, and keywords
-- **Visual Indicators**: Color-coded badges for quick status identification
-- **Responsive Design**: Mobile-friendly interface with Tailwind CSS
+- **Pagination**: Customizable items per page (5, 10, 20, 50) with smart page navigation
+
+### UI/UX Features
+- **Modern Design**: Vibrant gradient backgrounds (violet/pink/cyan) with glassmorphism effects
+- **Sticky Navbar**: Adaptive navbar that becomes compact on scroll with hamburger menu for mobile
+- **Toast Notifications**: Real-time success/error messages positioned at top-center
+- **Loading States**: Gradient spinners with smooth animations
+- **Visual Indicators**: Color-coded badges with clear labels (Status:, Priority:, Severity:)
+- **Floating Action Buttons**: 
+  - Export CSV button (bottom-right, expandable on hover)
+  - New Issue button (appears on scroll, stacked above export)
+- **Dynamic Status Button, max 200 characters)
+- description (String, required)
+- status (Enum: Open, In Progress, Resolved) - Default: Open
+- priority (Enum: Low, Medium, High) - Default: Medium
+- severity (Enum: Critical, Major, Minor) - Default: Minor
+- createdBy (ObjectId, ref: User, required
+- **CSV Export**: Download filtered issue list with all details
+- **Redux State**: Centralized state management for auth and issues
+- **Real-time Updates**: Automatic refresh after create/update/delete operations
 
 ## Database Schema
 
@@ -150,16 +176,33 @@ project_IssueTracker/
 - createdAt (Date)
 - updatedAt (Date)
 
-## Color Palette
+## Design System
 
-- **Primary (Actions)**: Royal Blue (#2563EB)
-- **Backgrounds**: Slate Gray (#F8FAFC)
+### Color Palette
+- **Primary Gradients**: 
+  - Violet to Purple to Pink (#7C3AED → #9333EA → #EC4899)
+  - Blue to Cyan (#3B82F6 → #06B6D4)
+  - Emerald to Teal (#10B981 → #14B8A6)
+  - Amber to Orange (#F59E0B → #F97316)
+- **Backgrounds**: 
+  - Gradient: Violet-100 via Pink-100 to Cyan-100
+  - Cards: White/80 with backdrop blur
 - **Text**: Dark Slate (#1E293B)
-- **Status Indicators**:
-  - Open: Blue/Gray
-  - In Progress: Yellow/Amber
-  - Resolved: Green
-  - Critical: Red
+
+### Status Indicators
+- **Open**: Blue (#3B82F6)
+- **In Progress**: Yellow/Amber (#F59E0B)
+- **Resolved**: Green (#10B981)
+
+### Priority Badges
+- **High**: Red (#EF4444)
+- **Medium**: Yellow (#F59E0B)
+- **Low**: Green (#10B981)
+
+### Severity Badges
+- **Critical**: Red (#EF4444)
+- **Major**: Orange (#F97316)
+- **Minor**: Blue (#3B82F6)
 
 ## Deployment
 
@@ -185,7 +228,7 @@ project_IssueTracker/
 
 ## License
 
-This project is licensed under the ISC License.
+This project is licensed under the MIT License.
 
 ## Support
 
