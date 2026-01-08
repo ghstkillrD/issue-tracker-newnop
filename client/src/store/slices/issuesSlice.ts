@@ -14,6 +14,12 @@ interface IssuesState {
     status: string;
     priority: string;
   };
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    total: number;
+    limit: number;
+  };
 }
 
 const initialState: IssuesState = {
@@ -27,15 +33,21 @@ const initialState: IssuesState = {
     status: '',
     priority: '',
   },
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+    limit: 10,
+  },
 };
 
 // Async thunks
 export const fetchIssues = createAsyncThunk(
   'issues/fetchIssues',
-  async (params: { search?: string; status?: string; priority?: string } | undefined, { rejectWithValue }) => {
+  async (params: { search?: string; status?: string; priority?: string; page?: number; limit?: number } | undefined, { rejectWithValue }) => {
     try {
       const response = await issueService.getIssues(params || {});
-      return response.data;
+      return response;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch issues');
     }
@@ -118,6 +130,13 @@ const issuesSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setPage: (state, action: PayloadAction<number>) => {
+      state.pagination.currentPage = action.payload;
+    },
+    setLimit: (state, action: PayloadAction<number>) => {
+      state.pagination.limit = action.payload;
+      state.pagination.currentPage = 1; // Reset to first page when changing limit
+    },
   },
   extraReducers: (builder) => {
     // Fetch Issues
@@ -126,9 +145,15 @@ const issuesSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchIssues.fulfilled, (state, action: PayloadAction<Issue[]>) => {
+      .addCase(fetchIssues.fulfilled, (state, action) => {
         state.loading = false;
-        state.issues = action.payload;
+        state.issues = action.payload.data;
+        state.pagination = {
+          currentPage: action.payload.currentPage,
+          totalPages: action.payload.totalPages,
+          total: action.payload.total,
+          limit: state.pagination.limit,
+        };
       })
       .addCase(fetchIssues.rejected, (state, action) => {
         state.loading = false;
@@ -212,5 +237,5 @@ const issuesSlice = createSlice({
   },
 });
 
-export const { setFilters, clearFilters, clearCurrentIssue, clearError } = issuesSlice.actions;
+export const { setFilters, clearFilters, clearCurrentIssue, clearError, setPage, setLimit } = issuesSlice.actions;
 export default issuesSlice.reducer;

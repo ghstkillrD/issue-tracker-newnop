@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchIssues, fetchStats, createIssue as createIssueAction, setFilters } from '../../store/slices/issuesSlice';
+import { fetchIssues, fetchStats, createIssue as createIssueAction, setFilters, setPage, setLimit } from '../../store/slices/issuesSlice';
 import { logout } from '../../store/slices/authSlice';
 import type { CreateIssueData, UpdateIssueData } from '../../services/issueService';
 import IssueList from '../../components/issues/IssueList.tsx';
@@ -14,7 +14,7 @@ const Dashboard = () => {
   const dispatch = useAppDispatch();
   
   const { isAuthenticated } = useAppSelector((state) => state.auth);
-  const { issues, stats, loading } = useAppSelector((state) => state.issues);
+  const { issues, stats, loading, pagination } = useAppSelector((state) => state.issues);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -37,12 +37,14 @@ const Dashboard = () => {
     if (searchTerm) params.search = searchTerm;
     if (statusFilter) params.status = statusFilter;
     if (priorityFilter) params.priority = priorityFilter;
+    params.page = pagination.currentPage;
+    params.limit = pagination.limit;
 
     dispatch(setFilters({ search: searchTerm, status: statusFilter, priority: priorityFilter }));
     dispatch(fetchIssues(params)).catch(() => {
       toast.error('Failed to load dashboard data. Please refresh the page.');
     });
-  }, [searchTerm, statusFilter, priorityFilter, dispatch]);
+  }, [searchTerm, statusFilter, priorityFilter, pagination.currentPage, pagination.limit, dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -61,10 +63,20 @@ const Dashboard = () => {
         search: searchTerm || undefined,
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
+        page: pagination.currentPage,
+        limit: pagination.limit,
       }));
     } catch (error: any) {
       toast.error(error || 'Failed to create issue. Please try again.');
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    dispatch(setPage(newPage));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    dispatch(setLimit(newLimit));
   };
 
   return (
@@ -237,6 +249,82 @@ const Dashboard = () => {
             All Issues
           </h2>
           <IssueList issues={issues} loading={loading} />
+
+          {/* Pagination Controls */}
+          {!loading && issues.length > 0 && (
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-200">
+              {/* Items per page selector */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-600 font-medium">Items per page:</span>
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => handleLimitChange(Number(e.target.value))}
+                  className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 font-medium cursor-pointer hover:border-purple-300"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-slate-500">
+                  Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total}
+                </span>
+              </div>
+
+              {/* Page navigation */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white transition-all font-medium text-slate-700"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.currentPage - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                          pagination.currentPage === pageNum
+                            ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 text-white shadow-lg'
+                            : 'bg-white border-2 border-slate-200 text-slate-700 hover:border-purple-300 hover:bg-purple-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  className="px-4 py-2 bg-white border-2 border-slate-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white transition-all font-medium text-slate-700"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -39,12 +39,9 @@ export interface IssueStats {
 export interface IssuesResponse {
   success: boolean;
   count: number;
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  total: number;
+  totalPages: number;
+  currentPage: number;
   data: Issue[];
 }
 
