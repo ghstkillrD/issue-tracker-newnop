@@ -157,7 +157,7 @@ const IssueDetails = () => {
         </button>
 
         {/* Action Buttons - Separated from card */}
-        <div className="mb-6 flex flex-wrap items-center gap-4">
+        <div className="mb-6 flex flex-wrap items-center justify-center sm:justify-start gap-4">
           {/* Icon Buttons Group - Edit and Delete */}
           <div className="flex gap-2">
             {/* Edit Button */}
