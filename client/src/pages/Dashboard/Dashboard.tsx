@@ -8,6 +8,8 @@ import type { CreateIssueData, UpdateIssueData } from '../../services/issueServi
 import IssueList from '../../components/issues/IssueList.tsx';
 import Modal from '../../components/common/Modal';
 import IssueForm from '../../components/issues/IssueForm';
+import Navbar from '../../components/layout/Navbar';
+import Footer from '../../components/layout/Footer';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -88,37 +90,7 @@ const Dashboard = () => {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-cyan-300 to-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse delay-500"></div>
       </div>
 
-      {/* Header */}
-      <div className="relative bg-white/80 backdrop-blur-xl shadow-xl border-b border-white/40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-2xl transform hover:scale-110 transition-transform">
-                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-3xl font-extrabold bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Issue Tracker
-                </h1>
-                <p className="text-sm text-slate-600 mt-0.5">Manage your projects efficiently</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold"
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                Logout
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <Navbar onLogout={handleLogout} />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
@@ -332,6 +304,8 @@ const Dashboard = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Issue">
         <IssueForm onSubmit={handleCreateIssue} onCancel={() => setIsModalOpen(false)} />
       </Modal>
+
+      <Footer />
     </div>
   );
 };
