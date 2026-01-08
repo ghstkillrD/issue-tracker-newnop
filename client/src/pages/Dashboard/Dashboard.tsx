@@ -242,20 +242,6 @@ const Dashboard = () => {
               </select>
 
               <button
-                onClick={handleExportCSV}
-                disabled={loading || issues.length === 0}
-                className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                title="Export issues to CSV"
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export CSV
-                </span>
-              </button>
-
-              <button
                 onClick={() => setIsModalOpen(true)}
                 className="px-8 py-4 bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 text-white rounded-2xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all font-bold whitespace-nowrap"
               >
@@ -359,6 +345,23 @@ const Dashboard = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create New Issue">
         <IssueForm onSubmit={handleCreateIssue} onCancel={() => setIsModalOpen(false)} />
       </Modal>
+
+      {/* Floating Export CSV Button */}
+      <button
+        onClick={handleExportCSV}
+        disabled={loading || issues.length === 0}
+        className="group fixed bottom-8 right-8 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 z-40 flex items-center overflow-hidden opacity-90 hover:opacity-100"
+        title="Export issues to CSV"
+      >
+        <div className="p-4 flex items-center justify-center">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap pr-0 group-hover:pr-5 font-bold">
+          Export CSV
+        </span>
+      </button>
 
       <Footer />
     </div>
